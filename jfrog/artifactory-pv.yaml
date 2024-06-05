@@ -1,0 +1,15 @@
+# artifactory-pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-artifactory
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: standard
+  hostPath:
+    path: "/mnt/data/artifactory"
+

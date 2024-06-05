@@ -1,0 +1,63 @@
+---
+- hosts: all
+  gather_facts: False
+  user: root
+  become: yes
+  tasks:
+    - name: Create User
+      user:
+        name: rothman
+        create_home: true
+        comment: 'Ansible Management Account'
+        shell: /bin/bash
+        expires: -1
+
+    - name: Setup Passwordless Authentication
+      authorized_key:
+        user: rothman
+        state: present
+        key: "{{ lookup('file', '/Users/rothman/.ssh/id_rsa.pub') }}"
+
+    - name: Setup Sudo access for rothman
+      copy:
+        dest: /etc/sudoers.d/rothman
+        content: 'rothman ALL=(ALL) NOPASSWD: ALL'
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Add provision user to the sudoers
+      copy:
+        dest: "/etc/sudoers.d/provision"
+        content: "provision  ALL=(ALL)  NOPASSWD: ALL"
+
+    - name: Deploy SSH Key for root
+      authorized_key:
+        user: root
+        key: "{{ lookup('file', '/Users/rothman/.ssh/id_rsa.pub') }}"
+        state: present
+
+    - name: "Disable Password Authentication"
+      lineinfile:
+        dest: "/etc/ssh/sshd_config"
+        regexp: '^PasswordAuthentication'
+        line: "PasswordAuthentication yes"
+        state: present
+        backup: yes
+      notify:
+        - restart ssh
+
+    - name: Disable Root Login
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: "PermitRootLogin yes"
+        state: present
+        backup: yes
+      notify:
+        - restart ssh
+
+  handlers:
+    - name: restart ssh
+      service:
+       name: sshd
+       state: restarted
+

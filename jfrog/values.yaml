@@ -1,0 +1,14 @@
+postgresql:
+  enabled: true
+  postgresqlPassword: admin
+  postgresqlDatabase: artifactory
+  persistence:
+    enabled: true
+    existingClaim: artifactory-pvc
+
+artifactory:
+  artifactory:
+    persistence:
+      enabled: true
+      existingClaim: artifactory-pvc
+

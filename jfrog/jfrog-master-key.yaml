@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: artifactory-join-key
+  namespace: jfrog
+type: Opaque
+data:
+  join.key: Nzg5MTZkYjRhMzdjODQ0MDVkYTAzZWRhMWY0YTFmMzY2MzE4ZTU5YWE1ZDM5YzljMjMzNmJmZDM4ZTkxMDY1OA== 

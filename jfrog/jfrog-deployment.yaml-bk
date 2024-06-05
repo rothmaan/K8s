@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: artifactory
+  namespace: jfrog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: artifactory
+  template:
+    metadata:
+      labels:
+        app: artifactory
+    spec:
+      containers:
+      - name: artifactory
+        image: docker.bintray.io/jfrog/artifactory-oss:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: ARTIFACTORY_HOME
+          value: /var/opt/jfrog/artifactory
+        volumeMounts:
+        - name: master-key
+          mountPath: /opt/jfrog/artifactory/var/etc/security
+          readOnly: true
+        - name: join-key
+          mountPath: /opt/jfrog/artifactory/var/etc/security
+          readOnly: true
+      volumes:
+      - name: master-key
+        secret:
+          secretName: artifactory-master-key
+      - name: join-key
+        secret:
+          secretName: artifactory-join-key
+

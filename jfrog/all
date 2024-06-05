@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: artifactory-master-key
+  namespace: jfrog
+type: Opaque
+data:
+  master.key: "ZmI3MjAzYzhhYmY5ZjMxYmQyYzU3YWJlYzZmYTNlNzY5ZTU5MDQ2YWI0MWE3NTMzNGI0ZjU4Nzc4NTNjZGYxYg=="
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: artifactory
+  namespace: jfrog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: artifactory
+  template:
+    metadata:
+      labels:
+        app: artifactory
+    spec:
+      containers:
+      - name: artifactory
+        image: docker.bintray.io/jfrog/artifactory-oss:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: ARTIFACTORY_HOME
+          value: /var/opt/jfrog/artifactory
+      - name: artifactory-nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: master-key
+          mountPath: /opt/jfrog/artifactory/var/etc/security
+          readOnly: true
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+      - name: master-key
+        secret:
+          secretName: artifactory-master-key
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: jfrog
+data:
+  nginx.conf: |
+    events { worker_connections 1024; }
+    http {
+      server {
+        listen 80;
+        location / {
+          proxy_pass http://localhost:8081/artifactory/;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        }
+      }
+    }
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: artifactory
+  namespace: jfrog
+spec:
+  selector:
+    app: artifactory
+  ports:
+  - name: artifactory-http
+    protocol: TCP
+    port: 8081
+    targetPort: 8081
+    nodePort: 30106
+  - name: artifactory-nginx
+    protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 30390
+  type: NodePort

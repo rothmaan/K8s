@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: artifactory-postgresql
+  namespace: jfrog
+spec:
+  serviceName: "artifactory-postgresql"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: artifactory-postgresql
+  template:
+    metadata:
+      labels:
+        app: artifactory-postgresql
+    spec:
+      initContainers:
+      - name: init-permissions
+        image: busybox
+        command: ["sh", "-c", "chown -R 1001:1001 /bitnami/postgresql"]
+        volumeMounts:
+        - name: postgresql-data
+          mountPath: /bitnami/postgresql
+      containers:
+      - name: postgresql
+        image: bitnami/postgresql:latest
+        env:
+        - name: POSTGRESQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: postgresql-password
+        - name: POSTGRESQL_DATABASE
+          value: "artifactory"
+        - name: POSTGRESQL_USERNAME
+          value: "artifactory"
+        volumeMounts:
+        - name: postgresql-data
+          mountPath: /bitnami/postgresql
+      volumes:
+      - name: postgresql-data
+        persistentVolumeClaim:
+          claimName: <pvc-name>
+      securityContext:
+        fsGroup: 1001
+      restartPolicy: Always
+
