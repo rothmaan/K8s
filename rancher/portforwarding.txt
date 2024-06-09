@@ -1,0 +1,10 @@
+portforwarding.txt
+
+## Rancher password
+kubectl get secret --namespace cattle-system bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}{{ "\n" }}'
+cdkqfg8mpr557wtjp9xd448lf2lgqpx46cwhcqq6zgrq6m656rkdl6
+
+
+This worked
+kubectl -n cattle-system port-forward svc/rancher 8443:443
+https://localhost:8443/dashboard/home
