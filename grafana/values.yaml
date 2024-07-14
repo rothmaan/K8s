@@ -1,0 +1,17 @@
+adminUser: admin
+adminPassword: admin
+service:
+  type: NodePort
+  nodePort: 32000
+  port: 80
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+    - grafana.local
+  tls:
+    - secretName: grafana-tls
+      hosts:
+        - grafana.local
+

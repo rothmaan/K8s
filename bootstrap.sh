@@ -66,5 +66,5 @@ echo "[TASK 10] Update /etc/hosts file"
 cat >>/etc/hosts<<EOF
 172.16.16.100   master.example.com master
 172.16.16.101   node1.example.com   node1
-#172.16.16.102   kworker2.example.com    kworker2
+172.16.16.102   node2.example.com   node2
 EOF

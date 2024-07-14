@@ -1,0 +1,17 @@
+install.txt
+
+
+
+helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
+kubectl create namespace cattle-system
+kubectl create namespace cattle-system
+helm repo update
+
+
+kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.11.0/cert-manager.crds.yaml
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --version v1.11.0
+kubectl get pods --namespace cert-manager
+
+
+kubectl create secret tls tls-rancher-ingress --cert=fullchain.pem --key=privkey.pem -n cattle-system
+

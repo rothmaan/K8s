@@ -1,9 +1,10 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: jenkins
+#kubectl get pods -n jenkins
+#kubectl apply -f jenkins-deployment.yaml
+#kubectl get pods -n jenkins
+#kubectl logs <jenkins-pod-name> -n jenkins | grep -A 5 "Jenkins initial setup is required"
+#kubectl get svc -n jenkins
+#http://172.16.16.101:30000
 
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -50,61 +51,4 @@ spec:
       - name: jenkins-home
         persistentVolumeClaim:
           claimName: jenkins-pvc
-
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: jenkins-pv
-  namespace: jenkins
-spec:
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: /mnt/data/jenkins-pv
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: jenkins-pvc
-  namespace: jenkins
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
-
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: jenkins-secret
-  namespace: jenkins
-data:
-  jenkins-admin-username: YWRtaW4=  # base64 encoded value for 'admin'
-  jenkins-admin-password: YWRtaW4=  # base64 encoded value for 'admin'
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: jenkins
-  namespace: jenkins
-spec:
-  type: NodePort
-  ports:
-    - name: http
-      port: 8080
-      targetPort: 8080
-      nodePort: 30000
-    - name: jnlp
-      port: 50000
-      targetPort: 50000
-      nodePort: 30001
-  selector:
-    app: jenkins
 

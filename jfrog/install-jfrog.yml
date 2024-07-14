@@ -1,0 +1,95 @@
+---
+- name: Install JFrog Artifactory OSS in Kubernetes
+  hosts: localhost
+  tasks:
+    - name: Add JFrog Helm repository
+      command: helm repo add jfrog https://charts.jfrog.io
+
+    - name: Update Helm repository
+      command: helm repo update
+
+    - name: Create jfrog namespace
+      k8s:
+        api_version: v1
+        kind: Namespace
+        name: jfrog
+        state: present
+
+    - name: Create artifactory namespace
+      k8s:
+        api_version: v1
+        kind: Namespace
+        name: artifactory
+        state: present
+
+    - name: Create Artifactory admin password secret
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: artifactory-admin-password
+            namespace: artifactory
+          data:
+            artifactory-admin-password: "{{ 'admin' | b64encode }}"
+
+    - name: Create custom values file for Helm
+      copy:
+        content: |
+          artifactory:
+            persistence:
+              enabled: true
+              existingClaim: artifactory-data-pvc
+
+          postgresql:
+            enabled: true
+            primary:
+              persistence:
+                existingClaim: artifactory-db-pvc
+        dest: /tmp/artifactory-values.yaml
+
+    - name: Deploy JFrog Artifactory OSS using Helm
+      shell: >
+        helm upgrade --install artifactory jfrog/artifactory-oss
+        --namespace artifactory
+        -f /tmp/artifactory-values.yaml
+
+    - name: Check deployments in artifactory namespace
+      command: kubectl get deployments -n artifactory
+      register: deployments_list
+
+    - name: Print deployments status
+      debug:
+        var: deployments_list.stdout_lines
+
+    - name: Wait for Artifactory nginx deployment to be ready
+      command: kubectl wait --namespace artifactory --for=condition=Available deployment/artifactory-artifactory-nginx --timeout=600s
+      register: wait_result_nginx
+      retries: 12
+      delay: 50
+      until: wait_result_nginx.rc == 0
+
+    - name: Wait for Artifactory deployment to be ready
+      command: kubectl wait --namespace artifactory --for=condition=Available deployment/artifactory --timeout=600s
+      register: wait_result_artifactory
+      retries: 12
+      delay: 50
+      until: wait_result_artifactory.rc == 0
+
+    - name: Set up port forwarding for Artifactory (localhost:8081 to 8081 on the Artifactory service)
+      local_action:
+        module: command
+        args:
+          cmd: kubectl port-forward -n artifactory svc/artifactory 8081:8081
+      async: 3600
+      poll: 0
+      register: port_forward
+
+    - name: Wait for port forwarding to be active
+      wait_for:
+        port: 8081
+        delay: 5
+        timeout: 120
+        state: started
+

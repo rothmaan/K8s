@@ -1,0 +1,72 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install curl (if not present)
+      apt:
+        name: curl
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Download Helm script
+      get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get-helm-3.sh
+        mode: '0755'
+
+    - name: Install Helm
+      command: /tmp/get-helm-3.sh
+
+    - name: Copy kubeconfig file
+      copy:
+        src: ~/.kube/config
+        dest: /root/.kube/config
+        mode: '0644'
+
+    - name: Export KUBECONFIG environment variable
+      shell: export KUBECONFIG=/root/.kube/config
+      environment:
+        KUBECONFIG: /root/.kube/config
+
+    - name: Add the Grafana Helm repository
+      command: helm repo add grafana https://grafana.github.io/helm-charts
+      args:
+        creates: /root/.cache/helm/repository/grafana-index.yaml
+
+    - name: Update Helm repositories
+      command: helm repo update
+
+    - name: Create Grafana namespace
+      command: kubectl create namespace grafana
+      args:
+        creates: /root/.kube/namespaces/grafana
+
+    - name: Template the values.yaml for Grafana
+      template:
+        src: templates/values.yaml.j2
+        dest: /tmp/values.yaml
+
+    - name: Install Grafana using Helm
+      command: helm install grafana grafana/grafana --namespace grafana -f /tmp/values.yaml
+      args:
+        creates: /root/.helm/repository/grafana
+
+    - name: Verify the installation
+      command: kubectl get all -n grafana
+      register: grafana_installation
+      ignore_errors: yes
+
+    - name: Display Grafana installation result
+      debug:
+        var: grafana_installation.stdout_lines
+
+    - name: Add entry to /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "172.16.16.101  grafana.local"
+        state: present
+
+    - name: Port forward to access Grafana (manual step)
+      debug:
+        msg: "To access Grafana, run 'kubectl port-forward service/grafana 3000:80 -n grafana'"
+

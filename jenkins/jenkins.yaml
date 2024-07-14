@@ -1,0 +1,78 @@
+---
+- name: Install Rancher and Cert-Manager
+  hosts: localhost
+  tasks:
+    - name: Add Rancher Helm repository
+      command: helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
+
+    - name: Create cattle-system namespace
+      k8s:
+        api_version: v1
+        kind: Namespace
+        metadata:
+          name: cattle-system
+        state: present
+
+    - name: Create cert-manager namespace
+      k8s:
+        api_version: v1
+        kind: Namespace
+        metadata:
+          name: cert-manager
+        state: present
+
+    - name: Update Helm repository
+      command: helm repo update
+
+    - name: Apply cert-manager CRDs
+      command: kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.11.0/cert-manager.crds.yaml
+
+    - name: Check if cert-manager is already installed
+      command: helm list -n cert-manager -q
+      register: helm_list
+      failed_when: false
+
+    - name: Install or upgrade cert-manager
+      command: >
+        helm {{ 'upgrade --install' if helm_list.stdout | regex_search('cert-manager') else 'install' }}
+        cert-manager jetstack/cert-manager --namespace cert-manager --version v1.11.0
+
+    - name: Wait for cert-manager pods to be ready
+      command: kubectl wait --namespace cert-manager --for=condition=Ready pods --all --timeout=300s
+
+    - name: Check cert-manager pods
+      command: kubectl get pods --namespace cert-manager
+      register: cert_manager_pods
+
+    - name: Print cert-manager pods status
+      debug:
+        var: cert_manager_pods.stdout_lines
+
+    - name: Create TLS secret for Rancher ingress
+      k8s:
+        api_version: v1
+        kind: Secret
+        metadata:
+          name: tls-rancher-ingress
+          namespace: cattle-system
+        data:
+          tls.crt: "{{ lookup('file', 'fullchain.pem') | b64encode }}"
+          tls.key: "{{ lookup('file', 'privkey.pem') | b64encode }}"
+        type: kubernetes.io/tls
+
+    - name: Set up port forwarding for Rancher (localhost:8080 to 80 on the Rancher service)
+      local_action: 
+        module: command 
+        args: 
+          cmd: kubectl port-forward -n cattle-system svc/rancher 8080:80
+      async: 3600
+      poll: 0
+      register: port_forward
+
+    - name: Wait for port forwarding to be active
+      wait_for:
+        port: 8080
+        delay: 5
+        timeout: 30
+        state: started
+

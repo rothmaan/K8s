@@ -1,0 +1,23 @@
+# Installing monitoring
+# Create namespace
+1. kubectl create namespace monitoring
+Install the cert-manager Custom Resource Definitions (CRDs):
+kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.4/cert-manager.crds.yaml
+
+2.Install cert-manager using Helm:
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --version v1.0.4
+
+3. Verify that the cert-manager components have started:
+kubectl get pods --namespace cert-manager
+
+# Installing  Rancher
+1. Create a namespace for Rancher:
+kubectl create namespace cattle-system
+2. Add the Helm chart repository:
+helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
+3. Install Rancher with Helm:
+helm install rancher rancher-latest/rancher --namespace cattle-system --set hostname=rancher.local
+4. Verify the Rancher installation:
+kubectl -n cattle-system rollout status deploy/rancher
+
+

@@ -1,0 +1,69 @@
+---
+- name: Clean up Artifactory namespace
+  hosts: localhost
+  tasks:
+    - name: Delete all deployments in artifactory namespace
+      k8s:
+        state: absent
+        api_version: apps/v1
+        kind: Deployment
+        namespace: artifactory
+      ignore_errors: yes
+      register: result
+      until: result is success
+
+    - name: Delete all stateful sets in artifactory namespace
+      k8s:
+        state: absent
+        api_version: apps/v1
+        kind: StatefulSet
+        namespace: artifactory
+      ignore_errors: yes
+      register: result
+      until: result is success
+
+    - name: Delete all services in artifactory namespace
+      k8s:
+        state: absent
+        api_version: v1
+        kind: Service
+        namespace: artifactory
+      ignore_errors: yes
+      register: result
+      until: result is success
+
+    - name: Delete all persistent volume claims in artifactory namespace
+      k8s:
+        state: absent
+        api_version: v1
+        kind: PersistentVolumeClaim
+        namespace: artifactory
+      ignore_errors: yes
+      register: result
+      until: result is success
+
+    - name: Delete all persistent volumes
+      k8s:
+        state: absent
+        api_version: v1
+        kind: PersistentVolume
+        name: "{{ item }}"
+      ignore_errors: yes
+      with_items:
+        - artifactory-data-pv
+        - artifactory-db-pv
+        - artifactory-volume-artifactory-0-pv
+        - data-artifactory-postgresql-0-pv
+      register: result
+      until: result is success
+
+    - name: Delete artifactory namespace
+      k8s:
+        state: absent
+        api_version: v1
+        kind: Namespace
+        name: artifactory
+      ignore_errors: yes
+      register: result
+      until: result is success
+
